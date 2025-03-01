@@ -1,0 +1,33 @@
+# Исключаем виртуальное окружение Python
+venv/
+.venv/
+myenv/
+
+# Исключаем файлы сборки React
+frontend/build/
+frontend/node_modules/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Лог-файлы
+*.log
+
+# MacOS / Windows системные файлы
+.DS_Store
+Thumbs.db
+
+~$*.xlsx
+
+# Игнорируем все файлы и папки в корневой директории...
+/*
+
+# ...но не игнорируем .gitignore
+!.gitignore
+
+# Не игнорируем нужные папки:
+!backend/
+!frontend/
