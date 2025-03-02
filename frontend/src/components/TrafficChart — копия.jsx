@@ -541,105 +541,92 @@ function TrafficChart({ data, metrics, compareMode = false }) {
     }
   };
   
-	return (
-	  <Box sx={{ position: 'relative' }}>
-		{/* Переключатель режима сравнения */}
-		<Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-		  <Typography variant="body2" color="text.secondary">
-			{isComparing 
-			  ? 'Выделите диапазон для сравнения' 
-			  : periodComparison 
-				? `Сравнение периодов: ${format(new Date(periodComparison.firstPeriod.start), 'd MMM', { locale: ru })} - ${format(new Date(periodComparison.firstPeriod.end), 'd MMM', { locale: ru })} vs ${format(new Date(periodComparison.secondPeriod.start), 'd MMM', { locale: ru })} - ${format(new Date(periodComparison.secondPeriod.end), 'd MMM', { locale: ru })}` 
-				: 'Включите режим сравнения для анализа периодов'
-			}
-		  </Typography>
-		  <ToggleButtonGroup
-			size="small"
-			exclusive
-			value={isComparing ? 'compare' : 'normal'}
-			onChange={handleCompareToggle}
-		  >
-			<ToggleButton value="compare" aria-label="режим сравнения">
-			  <CompareArrowsIcon fontSize="small" />
-			</ToggleButton>
-		  </ToggleButtonGroup>
-		</Box>
+  return (
+    <Box sx={{ position: 'relative' }}>
+      {/* Переключатель режима сравнения */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+        <Typography variant="body2" color="text.secondary">
+          {isComparing 
+            ? 'Выделите диапазон для сравнения' 
+            : periodComparison 
+              ? `Сравнение периодов: ${format(new Date(periodComparison.firstPeriod.start), 'd MMM', { locale: ru })} - ${format(new Date(periodComparison.firstPeriod.end), 'd MMM', { locale: ru })} vs ${format(new Date(periodComparison.secondPeriod.start), 'd MMM', { locale: ru })} - ${format(new Date(periodComparison.secondPeriod.end), 'd MMM', { locale: ru })}` 
+              : 'Включите режим сравнения для анализа периодов'
+          }
+        </Typography>
+        <ToggleButtonGroup
+          size="small"
+          exclusive
+          value={isComparing ? 'compare' : 'normal'}
+          onChange={handleCompareToggle}
+        >
+          <ToggleButton value="compare" aria-label="режим сравнения">
+            <CompareArrowsIcon fontSize="small" />
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+      
+      {/* График */}
+      <Box sx={{ position: 'relative', height: 210 }}>
+        <Line 
+          ref={chartRef}
+          data={chartData} 
+          options={options} 
+        />
+      </Box>
+      
+      {/* Отображение результатов сравнения выделенного диапазона */}
+      {comparison && (
+        <Paper variant="outlined" sx={{ p: 1, mt: 1, fontSize: '0.75rem' }}>
+          <Typography variant="body2" fontWeight="bold" gutterBottom>
+            Сравнение: {format(new Date(comparison.currentPeriod.start), 'd MMM', { locale: ru })} - {format(new Date(comparison.currentPeriod.end), 'd MMM', { locale: ru })} vs {format(new Date(comparison.previousPeriod.start), 'd MMM', { locale: ru })} - {format(new Date(comparison.previousPeriod.end), 'd MMM', { locale: ru })}
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            {Object.keys(comparison.metrics).map(metric => (
+              <Box key={metric} sx={{ minWidth: '100px' }}>
+                <Typography variant="caption" color="text.secondary">
+                  {metricLabels[metric]}:
+                </Typography>
+                <Typography 
+                  variant="body2" 
+                  color={getChangeColor(comparison.metrics[metric].percentChange, metric === 'avg_position')}
+                  fontWeight="bold"
+                >
+                  {formatPercentChange(comparison.metrics[metric].percentChange)}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Paper>
+      )}
+      
+      {/* Отображение результатов автоматического сравнения (периоды делятся пополам) */}
+      {!comparison && periodComparison && !isComparing && (
+        <Paper variant="outlined" sx={{ p: 1, mt: 1, fontSize: '0.75rem' }}>
+          <Typography variant="body2" gutterBottom>
+            Сравнение периодов:
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            {Object.keys(periodComparison.changes)
+              .filter(metric => metrics[metric])
+              .map(metric => (
+                <Box key={metric} sx={{ minWidth: '100px' }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {metricLabels[metric]}:
+                  </Typography>
+                  <Typography 
+                    variant="body2" 
+                    color={getChangeColor(periodComparison.changes[metric].percentChange, metric === 'avg_position')}
+                    fontWeight="bold"
+                  >
+                    {formatPercentChange(periodComparison.changes[metric].percentChange)}
+                  </Typography>
+                </Box>
+              ))}
+          </Box>
+        </Paper>
+      )}
+    </Box>
+  );
+}
 
-		{/* Условная отрисовка: если данных нет, отображаем сообщение, иначе — график */}
-		{!hasData ? (
-		  <Box sx={{ 
-			height: 230, 
-			display: 'flex', 
-			justifyContent: 'center', 
-			alignItems: 'center',
-			color: 'text.secondary',
-			fontSize: '0.875rem'
-		  }}>
-			Нет данных для отображения
-		  </Box>
-		) : (
-		  <>
-			{/* График */}
-			<Box sx={{ position: 'relative', height: 210 }}>
-			  <Line 
-				ref={chartRef}
-				data={chartData} 
-				options={options} 
-			  />
-			</Box>
-
-			{/* Результаты сравнения выделенного диапазона */}
-			{comparison && (
-			  <Paper variant="outlined" sx={{ p: 1, mt: 1, fontSize: '0.75rem' }}>
-				<Typography variant="body2" fontWeight="bold" gutterBottom>
-				  Сравнение: {format(new Date(comparison.currentPeriod.start), 'd MMM', { locale: ru })} - {format(new Date(comparison.currentPeriod.end), 'd MMM', { locale: ru })} vs {format(new Date(comparison.previousPeriod.start), 'd MMM', { locale: ru })} - {format(new Date(comparison.previousPeriod.end), 'd MMM', { locale: ru })}
-				</Typography>
-				<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-				  {Object.keys(comparison.metrics).map(metric => (
-					<Box key={metric} sx={{ minWidth: '100px' }}>
-					  <Typography variant="caption" color="text.secondary">
-						{metricLabels[metric]}:
-					  </Typography>
-					  <Typography 
-						variant="body2" 
-						color={getChangeColor(comparison.metrics[metric].percentChange, metric === 'avg_position')}
-						fontWeight="bold"
-					  >
-						{formatPercentChange(comparison.metrics[metric].percentChange)}
-					  </Typography>
-					</Box>
-				  ))}
-				</Box>
-			  </Paper>
-			)}
-
-			{/* Отображение результатов автоматического сравнения (если нет выделения) */}
-			{!comparison && periodComparison && !isComparing && (
-			  <Paper variant="outlined" sx={{ p: 1, mt: 1, fontSize: '0.75rem' }}>
-				<Typography variant="body2" gutterBottom>
-				  Сравнение периодов:
-				</Typography>
-				<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-				  {Object.keys(periodComparison.changes)
-					.filter(metric => metrics[metric])
-					.map(metric => (
-					  <Box key={metric} sx={{ minWidth: '100px' }}>
-						<Typography variant="caption" color="text.secondary">
-						  {metricLabels[metric]}:
-						</Typography>
-						<Typography 
-						  variant="body2" 
-						  color={getChangeColor(periodComparison.changes[metric].percentChange, metric === 'avg_position')}
-						  fontWeight="bold"
-						>
-						  {formatPercentChange(periodComparison.changes[metric].percentChange)}
-						</Typography>
-					  </Box>
-					))}
-				</Box>
-			  </Paper>
-			)}
-		  </>
-		)}
-	  </Box>
-	);
+export default TrafficChart;
