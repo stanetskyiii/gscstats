@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Базовый URL API
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = '/api';
 
 // Создаем экземпляр axios с настройками
 const api = axios.create({
