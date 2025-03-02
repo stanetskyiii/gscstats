@@ -104,6 +104,74 @@ function TrafficChart({ data, metrics, compareMode = false }) {
     return [...data].sort((a, b) => new Date(a.date) - new Date(b.date));
   }, [data, hasData]);
   
+  // Рассчитываем сравнение периодов, если данных достаточно
+  // Вынесем этот useMemo перед любыми условными возвратами
+  const periodComparison = useMemo(() => {
+    // Если данных меньше 8, то нельзя сделать сравнение
+    if (!sortedData || sortedData.length < 8) return null;
+    
+    // Обеспечиваем равное количество дней в обоих периодах
+    const totalDays = sortedData.length;
+    let midPoint = Math.floor(totalDays / 2);
+    
+    // Если нечетное количество дней, отбрасываем первый день
+    const startIndex = totalDays % 2 !== 0 ? 1 : 0;
+    
+    const firstPeriod = sortedData.slice(startIndex, startIndex + midPoint);
+    const secondPeriod = sortedData.slice(startIndex + midPoint);
+    
+    // Рассчитываем изменения по каждой метрике
+    const changes = {};
+    Object.keys(metrics).forEach(metric => {
+      if (!metrics[metric]) return;
+      
+      let firstSum = 0;
+      let secondSum = 0;
+      
+      firstPeriod.forEach(item => {
+        firstSum += item[metric] || 0;
+      });
+      
+      secondPeriod.forEach(item => {
+        secondSum += item[metric] || 0;
+      });
+      
+      const firstAvg = firstSum / firstPeriod.length;
+      const secondAvg = secondSum / secondPeriod.length;
+      
+      let percentChange = 0;
+      if (firstAvg !== 0) {
+        percentChange = ((secondAvg - firstAvg) / firstAvg) * 100;
+      } else if (secondAvg !== 0) {
+        percentChange = 100; // Если было 0, а стало что-то ненулевое
+      }
+      
+      if (metric === 'avg_position' && percentChange !== 0) {
+        percentChange = -percentChange;
+      }
+      
+      changes[metric] = {
+        firstPeriod: firstAvg,
+        secondPeriod: secondAvg,
+        percentChange: percentChange,
+        firstSum: firstSum,
+        secondSum: secondSum
+      };
+    });
+    
+    return {
+      firstPeriod: {
+        start: firstPeriod[0].date,
+        end: firstPeriod[firstPeriod.length - 1].date
+      },
+      secondPeriod: {
+        start: secondPeriod[0].date,
+        end: secondPeriod[secondPeriod.length - 1].date
+      },
+      changes
+    };
+  }, [sortedData, metrics]);
+  
   // Функция для определения результатов сравнения выделенного диапазона
   const calculateComparison = useCallback((data, startIndex, endIndex) => {
     if (!data || startIndex === null || endIndex === null) return null;
@@ -278,73 +346,6 @@ function TrafficChart({ data, metrics, compareMode = false }) {
     labels: sortedData.map(item => format(new Date(item.date), 'd MMM', { locale: ru })),
     datasets
   };
-  
-  // Рассчитываем сравнение периодов, если данных достаточно
-  const periodComparison = useMemo(() => {
-    // Если данных меньше 8, то нельзя сделать сравнение
-    if (sortedData.length < 8) return null;
-    
-    // Обеспечиваем равное количество дней в обоих периодах
-    const totalDays = sortedData.length;
-    let midPoint = Math.floor(totalDays / 2);
-    
-    // Если нечетное количество дней, отбрасываем первый день
-    const startIndex = totalDays % 2 !== 0 ? 1 : 0;
-    
-    const firstPeriod = sortedData.slice(startIndex, startIndex + midPoint);
-    const secondPeriod = sortedData.slice(startIndex + midPoint);
-    
-    // Рассчитываем изменения по каждой метрике
-    const changes = {};
-    Object.keys(metrics).forEach(metric => {
-      if (!metrics[metric]) return;
-      
-      let firstSum = 0;
-      let secondSum = 0;
-      
-      firstPeriod.forEach(item => {
-        firstSum += item[metric] || 0;
-      });
-      
-      secondPeriod.forEach(item => {
-        secondSum += item[metric] || 0;
-      });
-      
-      const firstAvg = firstSum / firstPeriod.length;
-      const secondAvg = secondSum / secondPeriod.length;
-      
-      let percentChange = 0;
-      if (firstAvg !== 0) {
-        percentChange = ((secondAvg - firstAvg) / firstAvg) * 100;
-      } else if (secondAvg !== 0) {
-        percentChange = 100; // Если было 0, а стало что-то ненулевое
-      }
-      
-      if (metric === 'avg_position' && percentChange !== 0) {
-        percentChange = -percentChange;
-      }
-      
-      changes[metric] = {
-        firstPeriod: firstAvg,
-        secondPeriod: secondAvg,
-        percentChange: percentChange,
-        firstSum: firstSum,
-        secondSum: secondSum
-      };
-    });
-    
-    return {
-      firstPeriod: {
-        start: firstPeriod[0].date,
-        end: firstPeriod[firstPeriod.length - 1].date
-      },
-      secondPeriod: {
-        start: secondPeriod[0].date,
-        end: secondPeriod[secondPeriod.length - 1].date
-      },
-      changes
-    };
-  }, [sortedData, metrics]);
   
   // Форматирование процентного изменения
   const formatPercentChange = (change) => {
@@ -541,105 +542,92 @@ function TrafficChart({ data, metrics, compareMode = false }) {
     }
   };
   
-	return (
-	  <Box sx={{ position: 'relative' }}>
-		{/* Переключатель режима сравнения */}
-		<Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-		  <Typography variant="body2" color="text.secondary">
-			{isComparing 
-			  ? 'Выделите диапазон для сравнения' 
-			  : periodComparison 
-				? `Сравнение периодов: ${format(new Date(periodComparison.firstPeriod.start), 'd MMM', { locale: ru })} - ${format(new Date(periodComparison.firstPeriod.end), 'd MMM', { locale: ru })} vs ${format(new Date(periodComparison.secondPeriod.start), 'd MMM', { locale: ru })} - ${format(new Date(periodComparison.secondPeriod.end), 'd MMM', { locale: ru })}` 
-				: 'Включите режим сравнения для анализа периодов'
-			}
-		  </Typography>
-		  <ToggleButtonGroup
-			size="small"
-			exclusive
-			value={isComparing ? 'compare' : 'normal'}
-			onChange={handleCompareToggle}
-		  >
-			<ToggleButton value="compare" aria-label="режим сравнения">
-			  <CompareArrowsIcon fontSize="small" />
-			</ToggleButton>
-		  </ToggleButtonGroup>
-		</Box>
+  return (
+    <Box sx={{ position: 'relative' }}>
+      {/* Переключатель режима сравнения */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+        <Typography variant="body2" color="text.secondary">
+          {isComparing 
+            ? 'Выделите диапазон для сравнения' 
+            : periodComparison 
+              ? `Сравнение периодов: ${format(new Date(periodComparison.firstPeriod.start), 'd MMM', { locale: ru })} - ${format(new Date(periodComparison.firstPeriod.end), 'd MMM', { locale: ru })} vs ${format(new Date(periodComparison.secondPeriod.start), 'd MMM', { locale: ru })} - ${format(new Date(periodComparison.secondPeriod.end), 'd MMM', { locale: ru })}` 
+              : 'Включите режим сравнения для анализа периодов'
+          }
+        </Typography>
+        <ToggleButtonGroup
+          size="small"
+          exclusive
+          value={isComparing ? 'compare' : 'normal'}
+          onChange={handleCompareToggle}
+        >
+          <ToggleButton value="compare" aria-label="режим сравнения">
+            <CompareArrowsIcon fontSize="small" />
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+      
+      {/* График */}
+      <Box sx={{ position: 'relative', height: 210 }}>
+        <Line 
+          ref={chartRef}
+          data={chartData} 
+          options={options} 
+        />
+      </Box>
+      
+      {/* Отображение результатов сравнения выделенного диапазона */}
+      {comparison && (
+        <Paper variant="outlined" sx={{ p: 1, mt: 1, fontSize: '0.75rem' }}>
+          <Typography variant="body2" fontWeight="bold" gutterBottom>
+            Сравнение: {format(new Date(comparison.currentPeriod.start), 'd MMM', { locale: ru })} - {format(new Date(comparison.currentPeriod.end), 'd MMM', { locale: ru })} vs {format(new Date(comparison.previousPeriod.start), 'd MMM', { locale: ru })} - {format(new Date(comparison.previousPeriod.end), 'd MMM', { locale: ru })}
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            {Object.keys(comparison.metrics).map(metric => (
+              <Box key={metric} sx={{ minWidth: '100px' }}>
+                <Typography variant="caption" color="text.secondary">
+                  {metricLabels[metric]}:
+                </Typography>
+                <Typography 
+                  variant="body2" 
+                  color={getChangeColor(comparison.metrics[metric].percentChange, metric === 'avg_position')}
+                  fontWeight="bold"
+                >
+                  {formatPercentChange(comparison.metrics[metric].percentChange)}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Paper>
+      )}
+      
+      {/* Отображение результатов автоматического сравнения (периоды делятся пополам) */}
+      {!comparison && periodComparison && !isComparing && (
+        <Paper variant="outlined" sx={{ p: 1, mt: 1, fontSize: '0.75rem' }}>
+          <Typography variant="body2" gutterBottom>
+            Сравнение периодов:
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            {Object.keys(periodComparison.changes)
+              .filter(metric => metrics[metric])
+              .map(metric => (
+                <Box key={metric} sx={{ minWidth: '100px' }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {metricLabels[metric]}:
+                  </Typography>
+                  <Typography 
+                    variant="body2" 
+                    color={getChangeColor(periodComparison.changes[metric].percentChange, metric === 'avg_position')}
+                    fontWeight="bold"
+                  >
+                    {formatPercentChange(periodComparison.changes[metric].percentChange)}
+                  </Typography>
+                </Box>
+              ))}
+          </Box>
+        </Paper>
+      )}
+    </Box>
+  );
+}
 
-		{/* Условная отрисовка: если данных нет, отображаем сообщение, иначе — график */}
-		{!hasData ? (
-		  <Box sx={{ 
-			height: 230, 
-			display: 'flex', 
-			justifyContent: 'center', 
-			alignItems: 'center',
-			color: 'text.secondary',
-			fontSize: '0.875rem'
-		  }}>
-			Нет данных для отображения
-		  </Box>
-		) : (
-		  <>
-			{/* График */}
-			<Box sx={{ position: 'relative', height: 210 }}>
-			  <Line 
-				ref={chartRef}
-				data={chartData} 
-				options={options} 
-			  />
-			</Box>
-
-			{/* Результаты сравнения выделенного диапазона */}
-			{comparison && (
-			  <Paper variant="outlined" sx={{ p: 1, mt: 1, fontSize: '0.75rem' }}>
-				<Typography variant="body2" fontWeight="bold" gutterBottom>
-				  Сравнение: {format(new Date(comparison.currentPeriod.start), 'd MMM', { locale: ru })} - {format(new Date(comparison.currentPeriod.end), 'd MMM', { locale: ru })} vs {format(new Date(comparison.previousPeriod.start), 'd MMM', { locale: ru })} - {format(new Date(comparison.previousPeriod.end), 'd MMM', { locale: ru })}
-				</Typography>
-				<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-				  {Object.keys(comparison.metrics).map(metric => (
-					<Box key={metric} sx={{ minWidth: '100px' }}>
-					  <Typography variant="caption" color="text.secondary">
-						{metricLabels[metric]}:
-					  </Typography>
-					  <Typography 
-						variant="body2" 
-						color={getChangeColor(comparison.metrics[metric].percentChange, metric === 'avg_position')}
-						fontWeight="bold"
-					  >
-						{formatPercentChange(comparison.metrics[metric].percentChange)}
-					  </Typography>
-					</Box>
-				  ))}
-				</Box>
-			  </Paper>
-			)}
-
-			{/* Отображение результатов автоматического сравнения (если нет выделения) */}
-			{!comparison && periodComparison && !isComparing && (
-			  <Paper variant="outlined" sx={{ p: 1, mt: 1, fontSize: '0.75rem' }}>
-				<Typography variant="body2" gutterBottom>
-				  Сравнение периодов:
-				</Typography>
-				<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-				  {Object.keys(periodComparison.changes)
-					.filter(metric => metrics[metric])
-					.map(metric => (
-					  <Box key={metric} sx={{ minWidth: '100px' }}>
-						<Typography variant="caption" color="text.secondary">
-						  {metricLabels[metric]}:
-						</Typography>
-						<Typography 
-						  variant="body2" 
-						  color={getChangeColor(periodComparison.changes[metric].percentChange, metric === 'avg_position')}
-						  fontWeight="bold"
-						>
-						  {formatPercentChange(periodComparison.changes[metric].percentChange)}
-						</Typography>
-					  </Box>
-					))}
-				</Box>
-			  </Paper>
-			)}
-		  </>
-		)}
-	  </Box>
-	);
+export default TrafficChart;
