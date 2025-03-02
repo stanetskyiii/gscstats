@@ -13,7 +13,7 @@ import {
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
 } from 'chart.js';
 
 // Регистрируем компоненты ChartJS
@@ -34,14 +34,16 @@ function CountryChart({ data, country, metrics }) {
   // Если данных нет, показываем placeholder
   if (!data || data.length === 0) {
     return (
-      <Box sx={{ 
-        height: 230, 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center',
-        color: 'text.secondary',
-        fontSize: '0.875rem'
-      }}>
+      <Box
+        sx={{
+          height: 230,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          color: 'text.secondary',
+          fontSize: '0.875rem',
+        }}
+      >
         Нет данных для отображения
       </Box>
     );
@@ -51,20 +53,32 @@ function CountryChart({ data, country, metrics }) {
   const metricColors = {
     traffic_clicks: {
       border: theme.palette.primary.main,
-      background: theme.palette.mode === 'dark' ? 'rgba(66, 165, 245, 0.2)' : 'rgba(33, 150, 243, 0.1)'
+      background:
+        theme.palette.mode === 'dark'
+          ? 'rgba(66, 165, 245, 0.2)'
+          : 'rgba(33, 150, 243, 0.1)',
     },
     impressions: {
       border: theme.palette.success.main,
-      background: theme.palette.mode === 'dark' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(76, 175, 80, 0.1)'
+      background:
+        theme.palette.mode === 'dark'
+          ? 'rgba(76, 175, 80, 0.2)'
+          : 'rgba(76, 175, 80, 0.1)',
     },
     ctr: {
       border: theme.palette.warning.main,
-      background: theme.palette.mode === 'dark' ? 'rgba(255, 152, 0, 0.2)' : 'rgba(255, 152, 0, 0.1)'
+      background:
+        theme.palette.mode === 'dark'
+          ? 'rgba(255, 152, 0, 0.2)'
+          : 'rgba(255, 152, 0, 0.1)',
     },
     avg_position: {
       border: theme.palette.error.main,
-      background: theme.palette.mode === 'dark' ? 'rgba(244, 67, 54, 0.2)' : 'rgba(244, 67, 54, 0.1)'
-    }
+      background:
+        theme.palette.mode === 'dark'
+          ? 'rgba(244, 67, 54, 0.2)'
+          : 'rgba(244, 67, 54, 0.1)',
+    },
   };
 
   // Метки для осей
@@ -72,12 +86,12 @@ function CountryChart({ data, country, metrics }) {
     traffic_clicks: 'Клики',
     impressions: 'Показы',
     ctr: 'CTR (%)',
-    avg_position: 'Средняя позиция'
+    avg_position: 'Средняя позиция',
   };
 
   // Группируем данные по датам для выбранной страны
   const groupedByDate = data
-    .filter(item => item.country === country)
+    .filter((item) => item.country === country)
     .reduce((acc, item) => {
       const dateStr = item.date;
       if (!acc[dateStr]) {
@@ -87,26 +101,26 @@ function CountryChart({ data, country, metrics }) {
           impressions: 0,
           ctr: 0,
           avg_position: 0,
-          domains: 0
+          domains: 0,
         };
       }
-      
+
       acc[dateStr].traffic_clicks += item.traffic_clicks || 0;
       acc[dateStr].impressions += item.impressions || 0;
-      
+
       // Для CTR и avg_position считаем взвешенное среднее
       if (item.impressions > 0) {
         acc[dateStr].ctr += (item.ctr || 0) * (item.impressions || 0);
         acc[dateStr].avg_position += (item.avg_position || 0) * (item.impressions || 0);
       }
-      
+
       acc[dateStr].domains += 1;
       return acc;
     }, {});
 
   // Преобразуем объект обратно в массив и вычисляем средние значения
   const chartData = Object.values(groupedByDate)
-    .map(day => {
+    .map((day) => {
       if (day.impressions > 0) {
         day.ctr = day.ctr / day.impressions;
         day.avg_position = day.avg_position / day.impressions;
@@ -120,10 +134,10 @@ function CountryChart({ data, country, metrics }) {
 
   // Создаем датасеты для выбранных метрик
   const datasets = Object.keys(metrics)
-    .filter(metric => metrics[metric])
-    .map(metric => ({
+    .filter((metric) => metrics[metric])
+    .map((metric) => ({
       label: metricLabels[metric],
-      data: chartData.map(item => {
+      data: chartData.map((item) => {
         // Форматируем CTR в процентах
         if (metric === 'ctr') {
           return item[metric] * 100;
@@ -144,8 +158,10 @@ function CountryChart({ data, country, metrics }) {
 
   // Подготавливаем данные для графика
   const chartDataset = {
-    labels: chartData.map(item => format(new Date(item.date), 'd MMM', { locale: ru })),
-    datasets
+    labels: chartData.map((item) =>
+      format(new Date(item.date), 'd MMM', { locale: ru })
+    ),
+    datasets,
   };
 
   // Опции графика
@@ -175,9 +191,10 @@ function CountryChart({ data, country, metrics }) {
         beginAtZero: true,
         position: 'left',
         grid: {
-          color: theme.palette.mode === 'dark' 
-            ? 'rgba(255, 255, 255, 0.05)' 
-            : 'rgba(0, 0, 0, 0.05)',
+          color:
+            theme.palette.mode === 'dark'
+              ? 'rgba(255, 255, 255, 0.05)'
+              : 'rgba(0, 0, 0, 0.05)',
           drawBorder: false,
         },
         ticks: {
@@ -206,19 +223,20 @@ function CountryChart({ data, country, metrics }) {
           },
           padding: 8,
         },
-      }
+      },
     },
     plugins: {
       title: {
-        display: false
+        display: false,
       },
       legend: {
         display: false,
       },
       tooltip: {
-        backgroundColor: theme.palette.mode === 'dark' 
-          ? 'rgba(0, 0, 0, 0.8)' 
-          : 'rgba(255, 255, 255, 0.95)',
+        backgroundColor:
+          theme.palette.mode === 'dark'
+            ? 'rgba(0, 0, 0, 0.8)'
+            : 'rgba(255, 255, 255, 0.95)',
         titleColor: theme.palette.text.primary,
         bodyColor: theme.palette.text.secondary,
         borderColor: theme.palette.divider,
@@ -226,13 +244,15 @@ function CountryChart({ data, country, metrics }) {
         padding: 10,
         callbacks: {
           title: (tooltipItems) => {
-            return format(new Date(chartData[tooltipItems[0].dataIndex].date), 'd MMMM yyyy', { locale: ru });
+            return format(new Date(chartData[tooltipItems[0].dataIndex].date), 'd MMMM yyyy', {
+              locale: ru,
+            });
           },
           label: (tooltipItem) => {
             const dataset = tooltipItem.dataset;
             let value = tooltipItem.raw;
             let label = dataset.label;
-            
+
             if (label === 'CTR (%)') {
               return `${label}: ${value.toFixed(2)}%`;
             } else if (label === 'Средняя позиция') {
@@ -244,10 +264,10 @@ function CountryChart({ data, country, metrics }) {
             const index = tooltipItems[0].dataIndex;
             const domains = chartData[index].domains;
             return `Включено доменов: ${domains}`;
-          }
-        }
-      }
-    }
+          },
+        },
+      },
+    },
   };
 
   return (

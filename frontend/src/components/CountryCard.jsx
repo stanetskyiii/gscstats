@@ -1,12 +1,12 @@
 import React from 'react';
-import { 
-  Card, 
-  CardContent, 
-  Typography, 
-  Box, 
-  Grid, 
-  CircularProgress, 
-  useTheme 
+import {
+  Card,
+  CardContent,
+  Typography,
+  Box,
+  Grid,
+  CircularProgress,
+  useTheme,
 } from '@mui/material';
 import CountryChart from './CountryChart';
 import CountryTopDomains from './CountryTopDomains';
@@ -19,66 +19,67 @@ function CountryCard({ country, data, loading, metrics, activeMetric }) {
     if (!data || data.length === 0) return {};
 
     // Группируем данные по стране и дате
-    const countryData = data.filter(item => item.country === country);
-    
+    const countryData = data.filter((item) => item.country === country);
+
     // Находим последнюю дату
-    const dates = [...new Set(countryData.map(item => item.date))].sort();
+    const dates = [...new Set(countryData.map((item) => item.date))].sort();
     const latestDate = dates[dates.length - 1];
-    
+
     // Суммируем метрики для последней даты
-    const latestData = countryData.filter(item => item.date === latestDate);
-    
+    const latestData = countryData.filter((item) => item.date === latestDate);
+
     let traffic_clicks = 0;
     let impressions = 0;
     let ctr_weighted = 0;
     let position_weighted = 0;
     let impressions_total = 0;
-    
-    latestData.forEach(item => {
+
+    latestData.forEach((item) => {
       traffic_clicks += item.traffic_clicks || 0;
       impressions += item.impressions || 0;
-      
+
       if (item.impressions > 0) {
         ctr_weighted += (item.ctr || 0) * (item.impressions || 0);
         position_weighted += (item.avg_position || 0) * (item.impressions || 0);
         impressions_total += item.impressions;
       }
     });
-    
+
     // Вычисляем средние значения
     let ctr = 0;
     let avg_position = 0;
-    
+
     if (impressions_total > 0) {
       ctr = ctr_weighted / impressions_total;
       avg_position = position_weighted / impressions_total;
     }
-    
+
     return {
       traffic_clicks,
       impressions,
       ctr,
-      avg_position
+      avg_position,
     };
   };
 
   const latestMetrics = getLatestMetrics();
 
   return (
-    <Card 
-      sx={{ 
-        height: '100%', 
-        display: 'flex', 
+    <Card
+      sx={{
+        height: '100%',
+        display: 'flex',
         flexDirection: 'column',
         backgroundColor: theme.palette.background.paper,
       }}
     >
       <CardContent sx={{ flexGrow: 1, padding: 2, pb: 2 }}>
         {/* Заголовок с названием страны */}
-        <Typography variant="h6" component="div" sx={{ 
-          fontWeight: 500, 
-          mb: 2
-        }}>
+        <Typography
+          variant="h6"
+          component="div"
+          sx={{ fontWeight: 500, mb: 2 }}
+        >
           {country}
         </Typography>
 
@@ -101,7 +102,7 @@ function CountryCard({ country, data, loading, metrics, activeMetric }) {
                     )}
                   </Typography>
                 </Grid>
-                
+
                 {/* Показы */}
                 <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">
@@ -115,7 +116,7 @@ function CountryCard({ country, data, loading, metrics, activeMetric }) {
                     )}
                   </Typography>
                 </Grid>
-                
+
                 {/* CTR */}
                 <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">
@@ -129,7 +130,7 @@ function CountryCard({ country, data, loading, metrics, activeMetric }) {
                     )}
                   </Typography>
                 </Grid>
-                
+
                 {/* Средняя позиция */}
                 <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">
@@ -149,14 +150,21 @@ function CountryCard({ country, data, loading, metrics, activeMetric }) {
             {/* График с данными */}
             <Box sx={{ mt: 3, height: 230 }}>
               {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '100%',
+                  }}
+                >
                   <CircularProgress />
                 </Box>
               ) : (
-                <CountryChart 
-                  data={data} 
-                  country={country} 
-                  metrics={metrics} 
+                <CountryChart
+                  data={data}
+                  country={country}
+                  metrics={metrics}
                 />
               )}
             </Box>
@@ -164,11 +172,7 @@ function CountryCard({ country, data, loading, metrics, activeMetric }) {
 
           {/* Правая колонка с ТОП доменов */}
           <Grid item xs={12} md={5}>
-            <CountryTopDomains 
-              data={data}
-              country={country}
-              metric={activeMetric}
-            />
+            <CountryTopDomains data={data} country={country} metric={activeMetric} />
           </Grid>
         </Grid>
       </CardContent>

@@ -12,9 +12,10 @@ function Footer() {
         py: 3,
         px: 2,
         mt: 'auto',
-        backgroundColor: theme.palette.mode === 'light' 
-          ? theme.palette.grey[200] 
-          : theme.palette.grey[900],
+        backgroundColor:
+          theme.palette.mode === 'light'
+            ? theme.palette.grey[200]
+            : theme.palette.grey[900],
       }}
     >
       <Container maxWidth="lg">

@@ -1,4 +1,3 @@
-# auth.py
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from config import AUTH_USERNAME, AUTH_PASSWORD

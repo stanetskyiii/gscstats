@@ -1,24 +1,51 @@
-import React, { useState } from 'react';
-import { 
-  Box, 
-  TextField, 
-  Button, 
-  Paper, 
-  Typography, 
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  TextField,
+  Button,
+  Paper,
+  Typography,
   Stack,
   IconButton,
   Tooltip,
-  useTheme
+  useTheme,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import TodayIcon from '@mui/icons-material/Today';
 import DateRangeIcon from '@mui/icons-material/DateRange';
-import { format, subDays, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import {
+  format,
+  subDays,
+  subMonths,
+  startOfMonth,
+  isAfter,
+  parseISO,
+} from 'date-fns';
 
-function DateRangePicker({ onDateRangeChange, onRefresh }) {
+function DateRangePicker({
+  onDateRangeChange,
+  onRefresh,
+  initialStartDate,
+  initialEndDate,
+  maxEndDate, // максимальная доступная дата (обычно вчера или последняя с данными)
+}) {
   const theme = useTheme();
-  const [startDate, setStartDate] = useState(format(subMonths(new Date(), 3), 'yyyy-MM-dd'));
-  const [endDate, setEndDate] = useState(format(subDays(new Date(), 2), 'yyyy-MM-dd'));
+  const [startDate, setStartDate] = useState(
+    initialStartDate || format(subMonths(new Date(), 3), 'yyyy-MM-dd')
+  );
+  const [endDate, setEndDate] = useState(
+    initialEndDate || format(subDays(new Date(), 2), 'yyyy-MM-dd')
+  );
+
+  // Обновление при изменении начальных значений
+  useEffect(() => {
+    if (initialStartDate) {
+      setStartDate(initialStartDate);
+    }
+    if (initialEndDate) {
+      setEndDate(initialEndDate);
+    }
+  }, [initialStartDate, initialEndDate]);
 
   // Обработчик изменения начальной даты
   const handleStartDateChange = (e) => {
@@ -35,51 +62,71 @@ function DateRangePicker({ onDateRangeChange, onRefresh }) {
     // Проверяем, что даты корректны
     const start = new Date(startDate);
     const end = new Date(endDate);
-    
+
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       alert('Пожалуйста, выберите корректные даты');
       return;
     }
-    
+
     if (start > end) {
       alert('Начальная дата не может быть позже конечной');
       return;
     }
-    
-    // Вызываем функцию родительского компонента
+
+    // Проверяем, что конечная дата не превышает максимальную
+    if (maxEndDate && isAfter(end, parseISO(maxEndDate))) {
+      const newEndDate = maxEndDate;
+      setEndDate(newEndDate);
+
+      // Вызываем функцию родительского компонента с корректированной датой
+      onDateRangeChange(startDate, newEndDate);
+
+      alert(
+        `Конечная дата ограничена последней доступной датой (${maxEndDate})`
+      );
+      return;
+    }
+
+    // Вызываем функцию родительского компонента с правильными аргументами
     onDateRangeChange(startDate, endDate);
   };
 
   // Предустановленные диапазоны
   const setLastWeek = () => {
-    const end = format(subDays(new Date(), 2), 'yyyy-MM-dd'); // до позавчера
-    const start = format(subDays(new Date(end), 7), 'yyyy-MM-dd'); // неделя до этого
-    
+    // Определяем конечную дату как вчера или максимальную доступную
+    const maxDate = maxEndDate ? new Date(maxEndDate) : subDays(new Date(), 2);
+    const end = format(maxDate, 'yyyy-MM-dd');
+    const start = format(subDays(new Date(end), 7), 'yyyy-MM-dd');
+
     setStartDate(start);
     setEndDate(end);
-    
-    // Важно - вызываем родительскую функцию!
+
+    // Вызываем родительскую функцию
     onDateRangeChange(start, end);
   };
 
   const setLastMonth = () => {
-    const end = format(subDays(new Date(), 2), 'yyyy-MM-dd'); // до позавчера
-    const start = format(subDays(new Date(end), 30), 'yyyy-MM-dd'); // месяц до этого
-    
+    // Определяем конечную дату как вчера или максимальную доступную
+    const maxDate = maxEndDate ? new Date(maxEndDate) : subDays(new Date(), 2);
+    const end = format(maxDate, 'yyyy-MM-dd');
+    const start = format(subDays(new Date(end), 30), 'yyyy-MM-dd');
+
     setStartDate(start);
     setEndDate(end);
-    
+
     // Вызываем родительскую функцию
     onDateRangeChange(start, end);
   };
 
   const setLast3Months = () => {
-    const end = format(subDays(new Date(), 2), 'yyyy-MM-dd'); // до позавчера
-    const start = format(subMonths(new Date(end), 3), 'yyyy-MM-dd'); // 3 месяца до этого
-    
+    // Определяем конечную дату как вчера или максимальную доступную
+    const maxDate = maxEndDate ? new Date(maxEndDate) : subDays(new Date(), 2);
+    const end = format(maxDate, 'yyyy-MM-dd');
+    const start = format(subMonths(new Date(end), 3), 'yyyy-MM-dd');
+
     setStartDate(start);
     setEndDate(end);
-    
+
     // Вызываем родительскую функцию
     onDateRangeChange(start, end);
   };
@@ -87,11 +134,14 @@ function DateRangePicker({ onDateRangeChange, onRefresh }) {
   const setCurrentMonth = () => {
     const now = new Date();
     const start = format(startOfMonth(now), 'yyyy-MM-dd');
-    const end = format(subDays(now, 2), 'yyyy-MM-dd'); // до позавчера, но не дальше конца месяца
-    
+
+    // Определяем конечную дату как вчера или максимальную доступную, но не дальше конца месяца
+    const maxDate = maxEndDate ? new Date(maxEndDate) : subDays(now, 2);
+    const end = format(maxDate, 'yyyy-MM-dd');
+
     setStartDate(start);
     setEndDate(end);
-    
+
     // Вызываем родительскую функцию
     onDateRangeChange(start, end);
   };
@@ -124,49 +174,35 @@ function DateRangePicker({ onDateRangeChange, onRefresh }) {
               shrink: true,
             }}
             sx={{ width: 170 }}
+            inputProps={{
+              max: maxEndDate || undefined,
+            }}
           />
-          <Button 
-            variant="contained"
-            size="small"
-            onClick={handleApply}
-            sx={{ ml: 1 }}
-          >
+          <Button variant="contained" size="small" onClick={handleApply} sx={{ ml: 1 }}>
             Применить
           </Button>
         </Stack>
 
         <Box sx={{ display: 'flex', gap: 1, ml: 'auto', flexWrap: 'wrap' }}>
           <Tooltip title="Последние 7 дней">
-            <Button 
-              variant="outlined" 
-              size="small" 
-              onClick={setLastWeek}
-            >
+            <Button variant="outlined" size="small" onClick={setLastWeek}>
               7 дней
             </Button>
           </Tooltip>
           <Tooltip title="Последние 30 дней">
-            <Button 
-              variant="outlined" 
-              size="small" 
-              onClick={setLastMonth}
-            >
+            <Button variant="outlined" size="small" onClick={setLastMonth}>
               30 дней
             </Button>
           </Tooltip>
           <Tooltip title="Последние 3 месяца">
-            <Button 
-              variant="outlined" 
-              size="small" 
-              onClick={setLast3Months}
-            >
+            <Button variant="outlined" size="small" onClick={setLast3Months}>
               3 мес
             </Button>
           </Tooltip>
           <Tooltip title="Текущий месяц">
-            <Button 
-              variant="outlined" 
-              size="small" 
+            <Button
+              variant="outlined"
+              size="small"
               onClick={setCurrentMonth}
               startIcon={<TodayIcon fontSize="small" />}
             >
@@ -174,11 +210,7 @@ function DateRangePicker({ onDateRangeChange, onRefresh }) {
             </Button>
           </Tooltip>
           <Tooltip title="Обновить данные">
-            <IconButton 
-              color="primary" 
-              onClick={onRefresh}
-              size="small"
-            >
+            <IconButton color="primary" onClick={onRefresh} size="small">
               <RefreshIcon />
             </IconButton>
           </Tooltip>

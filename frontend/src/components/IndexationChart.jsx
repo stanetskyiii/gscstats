@@ -11,7 +11,7 @@ import {
   BarElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
 } from 'chart.js';
 
 // Регистрируем компоненты ChartJS
@@ -30,14 +30,16 @@ function IndexationChart({ data }) {
   // Если данных нет, показываем placeholder
   if (!data || data.length === 0) {
     return (
-      <Box sx={{ 
-        height: 230, 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center',
-        color: 'text.secondary',
-        fontSize: '0.875rem'
-      }}>
+      <Box
+        sx={{
+          height: 230,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          color: 'text.secondary',
+          fontSize: '0.875rem',
+        }}
+      >
         Нет данных для отображения
       </Box>
     );
@@ -45,11 +47,13 @@ function IndexationChart({ data }) {
 
   // Подготавливаем данные для графика
   const chartData = {
-    labels: data.map(item => format(new Date(item.date), 'd MMM', { locale: ru })),
+    labels: data.map((item) =>
+      format(new Date(item.date), 'd MMM', { locale: ru })
+    ),
     datasets: [
       {
         label: 'В индексе',
-        data: data.map(item => item.pages_indexed),
+        data: data.map((item) => item.pages_indexed),
         backgroundColor: theme.palette.success.main,
         borderColor: theme.palette.success.main,
         borderWidth: 1,
@@ -58,14 +62,14 @@ function IndexationChart({ data }) {
       },
       {
         label: 'Не проиндексировано',
-        data: data.map(item => item.pages_not_indexed),
+        data: data.map((item) => item.pages_not_indexed),
         backgroundColor: theme.palette.error.main,
         borderColor: theme.palette.error.main,
         borderWidth: 1,
         borderRadius: 4,
         barPercentage: 0.6,
-      }
-    ]
+      },
+    ],
   };
 
   // Опции графика
@@ -91,9 +95,10 @@ function IndexationChart({ data }) {
         stacked: false,
         beginAtZero: true,
         grid: {
-          color: theme.palette.mode === 'dark' 
-            ? 'rgba(255, 255, 255, 0.05)' 
-            : 'rgba(0, 0, 0, 0.05)',
+          color:
+            theme.palette.mode === 'dark'
+              ? 'rgba(255, 255, 255, 0.05)'
+              : 'rgba(0, 0, 0, 0.05)',
           drawBorder: false,
         },
         ticks: {
@@ -120,9 +125,10 @@ function IndexationChart({ data }) {
         },
       },
       tooltip: {
-        backgroundColor: theme.palette.mode === 'dark' 
-          ? 'rgba(0, 0, 0, 0.8)' 
-          : 'rgba(255, 255, 255, 0.95)',
+        backgroundColor:
+          theme.palette.mode === 'dark'
+            ? 'rgba(0, 0, 0, 0.8)'
+            : 'rgba(255, 255, 255, 0.95)',
         titleColor: theme.palette.text.primary,
         bodyColor: theme.palette.text.secondary,
         borderColor: theme.palette.divider,
@@ -131,11 +137,15 @@ function IndexationChart({ data }) {
         usePointStyle: true,
         callbacks: {
           title: (tooltipItems) => {
-            return format(new Date(data[tooltipItems[0].dataIndex].date), 'd MMMM yyyy', { locale: ru });
-          }
-        }
-      }
-    }
+            return format(
+              new Date(data[tooltipItems[0].dataIndex].date),
+              'd MMMM yyyy',
+              { locale: ru }
+            );
+          },
+        },
+      },
+    },
   };
 
   return (

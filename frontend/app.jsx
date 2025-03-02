@@ -28,13 +28,18 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        minHeight: '100vh',
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: '100vh',
+        }}
+      >
         <Header />
-        <Container maxWidth="xl" style={{ flex: 1, paddingTop: '2rem', paddingBottom: '2rem' }}>
+        <Container
+          maxWidth="xl"
+          style={{ flex: 1, paddingTop: '2rem', paddingBottom: '2rem' }}
+        >
           <Dashboard />
         </Container>
         <Footer />

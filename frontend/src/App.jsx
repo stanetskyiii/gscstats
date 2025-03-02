@@ -1,7 +1,7 @@
 import React, { useState, useEffect, createContext } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { Container } from '@mui/material';
+import { Container, LinearProgress, Box, Typography, Paper } from '@mui/material';
 
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -12,7 +12,8 @@ import LoadingIndicator from './components/LoadingIndicator';
 // Создаем контекст для индикатора загрузки
 export const LoadingContext = createContext({
   setGlobalLoading: () => {},
-  setLoadingMessage: () => {}
+  setLoadingMessage: () => {},
+  setLoadingProgress: () => {}
 });
 
 // Создаем светлую тему
@@ -106,6 +107,7 @@ function App() {
   // Состояние для глобального индикатора загрузки
   const [globalLoading, setGlobalLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [loadingProgress, setLoadingProgress] = useState(0);
   
   // Проверяем, есть ли сохраненная аутентификация
   useEffect(() => {
@@ -138,10 +140,19 @@ function App() {
   const theme = themeMode === 'light' ? lightTheme : darkTheme;
 
   return (
-    <LoadingContext.Provider value={{ setGlobalLoading, setLoadingMessage }}>
+    <LoadingContext.Provider value={{ 
+      setGlobalLoading, 
+      setLoadingMessage, 
+      setLoadingProgress 
+    }}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        {globalLoading && <LoadingIndicator message={loadingMessage} />}
+        {globalLoading && (
+          <LoadingIndicator 
+            message={loadingMessage}
+            progress={loadingProgress} 
+          />
+        )}
         {!isAuthenticated ? (
           <Login onLogin={handleLogin} />
         ) : (

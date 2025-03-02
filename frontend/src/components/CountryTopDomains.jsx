@@ -1,15 +1,15 @@
 import React, { useMemo } from 'react';
-import { 
-  Box, 
-  Paper, 
-  Typography, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
+import {
+  Box,
+  Paper,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
   TableRow,
-  useTheme
+  useTheme,
 } from '@mui/material';
 
 /**
@@ -24,12 +24,12 @@ function CountryTopDomains({ data, country, metric = 'traffic_clicks' }) {
     if (!data || !country || data.length === 0) return [];
 
     // Фильтруем данные по выбранной стране
-    const countryData = data.filter(item => item.country === country);
-    
+    const countryData = data.filter((item) => item.country === country);
+
     // Группируем по доменам
     const domainTotals = countryData.reduce((acc, item) => {
       const domain = item.domain;
-      
+
       if (!acc[domain]) {
         acc[domain] = {
           domain,
@@ -37,24 +37,24 @@ function CountryTopDomains({ data, country, metric = 'traffic_clicks' }) {
           impressions: 0,
           ctr_weighted: 0,
           position_weighted: 0,
-          impressions_total: 0
+          impressions_total: 0,
         };
       }
-      
+
       acc[domain].traffic_clicks += item.traffic_clicks || 0;
       acc[domain].impressions += item.impressions || 0;
-      
+
       if (item.impressions > 0) {
         acc[domain].ctr_weighted += (item.ctr || 0) * (item.impressions || 0);
         acc[domain].position_weighted += (item.avg_position || 0) * (item.impressions || 0);
         acc[domain].impressions_total += item.impressions;
       }
-      
+
       return acc;
     }, {});
-    
+
     // Вычисляем средние значения
-    Object.values(domainTotals).forEach(data => {
+    Object.values(domainTotals).forEach((data) => {
       if (data.impressions_total > 0) {
         data.ctr = data.ctr_weighted / data.impressions_total;
         data.avg_position = data.position_weighted / data.impressions_total;
@@ -63,15 +63,17 @@ function CountryTopDomains({ data, country, metric = 'traffic_clicks' }) {
         data.avg_position = 0;
       }
     });
-    
+
     // Сортируем по указанной метрике (по умолчанию клики)
-    return Object.values(domainTotals).sort((a, b) => {
-      // Для средней позиции сортировка обратная (меньше = лучше)
-      if (metric === 'avg_position') {
-        return a[metric] - b[metric];
-      }
-      return b[metric] - a[metric];
-    }).slice(0, 10); // Берем топ-10
+    return Object.values(domainTotals)
+      .sort((a, b) => {
+        // Для средней позиции сортировка обратная (меньше = лучше)
+        if (metric === 'avg_position') {
+          return a[metric] - b[metric];
+        }
+        return b[metric] - a[metric];
+      })
+      .slice(0, 10); // Берем топ-10
   }, [data, country, metric]);
 
   // Безусловно вызываем useMemo для расчета total
@@ -106,7 +108,7 @@ function CountryTopDomains({ data, country, metric = 'traffic_clicks' }) {
     traffic_clicks: 'Клики',
     impressions: 'Показы',
     ctr: 'CTR',
-    avg_position: 'Поз.'
+    avg_position: 'Поз.',
   }[metric];
 
   // Если данных нет, показываем placeholder
@@ -116,14 +118,16 @@ function CountryTopDomains({ data, country, metric = 'traffic_clicks' }) {
         <Typography variant="h6" gutterBottom>
           ТОП-10 доменов
         </Typography>
-        <Box sx={{ 
-          height: 'calc(100% - 40px)', 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center',
-          color: 'text.secondary',
-          fontSize: '0.875rem'
-        }}>
+        <Box
+          sx={{
+            height: 'calc(100% - 40px)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            color: 'text.secondary',
+            fontSize: '0.875rem',
+          }}
+        >
           Нет данных для отображения
         </Box>
       </Paper>
@@ -135,7 +139,7 @@ function CountryTopDomains({ data, country, metric = 'traffic_clicks' }) {
       <Typography variant="h6" gutterBottom>
         ТОП-10 доменов: {country}
       </Typography>
-      
+
       <TableContainer sx={{ maxHeight: 350 }}>
         <Table size="small" aria-label="top domains">
           <TableHead>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   Box,
   Container,
@@ -7,11 +7,13 @@ import {
   Typography,
   Paper,
   Alert,
-  CircularProgress
+  CircularProgress,
 } from '@mui/material';
-import { checkAuth } from '../services/api';
+import { checkAuth, preloadAllData } from '../services/api';
+import { LoadingContext } from '../App';
 
 function Login({ onLogin }) {
+  const { setGlobalLoading, setLoadingMessage } = useContext(LoadingContext);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -24,12 +26,24 @@ function Login({ onLogin }) {
       // Сохраняем учётные данные для использования в api.js
       localStorage.setItem('username', username);
       localStorage.setItem('password', password);
-      
+
       // Проверяем авторизацию
       const isAuthenticated = await checkAuth();
-      
+
       if (isAuthenticated) {
         onLogin(true);
+
+        // Начинаем предварительную загрузку данных
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 3);
+
+        // Форматируем даты
+        const formattedStartDate = startDate.toISOString().split('T')[0];
+        const formattedEndDate = endDate.toISOString().split('T')[0];
+
+        // Запускаем предварительную загрузку с индикатором
+        preloadAllData(formattedStartDate, formattedEndDate, setGlobalLoading, setLoadingMessage);
       } else {
         setError('Неверное имя пользователя или пароль');
         localStorage.removeItem('username');
@@ -43,7 +57,15 @@ function Login({ onLogin }) {
   };
 
   return (
-    <Container maxWidth="sm" sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <Container
+      maxWidth="sm"
+      sx={{
+        height: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
       <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
         <Typography variant="h4" component="h1" align="center" gutterBottom>
           GSC Stats Dashboard
@@ -51,13 +73,13 @@ function Login({ onLogin }) {
         <Typography variant="subtitle1" align="center" color="text.secondary" gutterBottom>
           Панель мониторинга данных из Google Search Console
         </Typography>
-        
+
         {error && (
           <Alert severity="error" sx={{ my: 2 }}>
             {error}
           </Alert>
         )}
-        
+
         <Box component="form" onSubmit={handleLogin} sx={{ mt: 3 }}>
           <TextField
             label="Имя пользователя"
@@ -67,7 +89,7 @@ function Login({ onLogin }) {
             onChange={(e) => setUsername(e.target.value)}
             required
           />
-          
+
           <TextField
             label="Пароль"
             type="password"
@@ -77,7 +99,7 @@ function Login({ onLogin }) {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          
+
           <Button
             type="submit"
             fullWidth

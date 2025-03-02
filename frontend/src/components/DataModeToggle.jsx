@@ -1,10 +1,10 @@
 import React from 'react';
-import { 
-  Box, 
-  ToggleButtonGroup, 
-  ToggleButton, 
+import {
+  Box,
+  ToggleButtonGroup,
+  ToggleButton,
   Typography,
-  Paper
+  Paper,
 } from '@mui/material';
 import PublicIcon from '@mui/icons-material/Public';
 import LanguageIcon from '@mui/icons-material/Language';
@@ -27,7 +27,7 @@ function DataModeToggle({ dataMode, onChange }) {
         <Typography variant="body1" fontWeight={500}>
           Режим анализа:
         </Typography>
-        
+
         <ToggleButtonGroup
           value={dataMode}
           exclusive

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useContext } from 'react';
 import { 
   Grid, 
   Typography, 
@@ -18,9 +18,11 @@ import CountrySummaryChart from './CountrySummaryChart';
 import CountryCard from './CountryCard';
 import DateRangePicker from './DateRangePicker';
 import MetricsToggle from './MetricsToggle';
+import { LoadingContext } from '../App';
 
 function CountryDashboard({ startDate, endDate, onDateRangeChange, onRefresh }) {
   const theme = useTheme();
+  const { setGlobalLoading, setLoadingMessage, setLoadingProgress } = useContext(LoadingContext);
   
   // Состояние для хранения данных по странам
   const [countryData, setCountryData] = useState([]);
@@ -68,34 +70,65 @@ function CountryDashboard({ startDate, endDate, onDateRangeChange, onRefresh }) 
       .map(item => item.name);
   }, [countryData]);
   
-  // Фильтрация стран по поисковому запросу
+  // Фильтрация стран по поисковому запросу - показываем все страны
   const filteredCountries = useMemo(() => {
     if (!searchTerm) {
-      // Увеличиваем лимит до 20 стран для лучшего отображения
-      return countries.slice(0, 20);
+      // Показываем все страны
+      return countries;
     }
     
     return countries
-      .filter(country => country.toLowerCase().includes(searchTerm.toLowerCase()))
-      .slice(0, 20); // Увеличиваем лимит до 20
+      .filter(country => country.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [countries, searchTerm]);
   
-  // Загрузка данных по странам
+  // Загрузка данных по странам с отображением прогресса
   const fetchCountryData = async (start = startDate, end = endDate) => {
     setIsLoading(true);
     setError(null);
+    setGlobalLoading(true);
+    setLoadingMessage('Загрузка данных по странам...');
+    setLoadingProgress(0);
+    
+    const startTime = Date.now();
     
     try {
-      const data = await getCountrySummaryRange(start, end);
+      const data = await getCountrySummaryRange(start, end, 
+        (percent, remainingMs) => {
+          setLoadingProgress(percent);
+          
+          // Формируем сообщение с оценкой времени
+          let timeMsg = '';
+          if (remainingMs > 0) {
+            if (remainingMs > 60000) {
+              timeMsg = ` (осталось примерно ${Math.ceil(remainingMs / 60000)} мин)`;
+            } else {
+              timeMsg = ` (осталось примерно ${Math.ceil(remainingMs / 1000)} сек)`;
+            }
+          }
+          setLoadingMessage(`Загрузка данных по странам: ${percent}%${timeMsg}`);
+        }
+      );
       
       if (!data || data.length === 0) {
         setError("Нет данных о странах за выбранный период");
       }
       
-      setCountryData(data);
+      // Сортируем данные по дате для обеспечения правильного отображения на графиках
+      const sortedData = data.sort((a, b) => new Date(a.date) - new Date(b.date));
+      setCountryData(sortedData);
+      
+      // Вычисляем общее время выполнения
+      const totalTime = Math.round((Date.now() - startTime) / 1000);
+      setLoadingMessage(`Загрузка завершена за ${totalTime} секунд`);
+      setTimeout(() => {
+        setGlobalLoading(false);
+        setLoadingMessage('');
+      }, 2000);
+      
     } catch (error) {
       console.error('Error fetching country data:', error);
       setError("Ошибка загрузки данных о странах");
+      setGlobalLoading(false);
     } finally {
       setIsLoading(false);
     }
@@ -131,9 +164,10 @@ function CountryDashboard({ startDate, endDate, onDateRangeChange, onRefresh }) 
   };
   
   // Загрузка данных при первом рендере
-  useEffect(() => {
-    fetchCountryData();
-  }, []);
+	useEffect(() => {
+	  fetchCountryData();
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
   
   // Обработчик обновления данных
   const handleRefresh = () => {
@@ -196,7 +230,7 @@ function CountryDashboard({ startDate, endDate, onDateRangeChange, onRefresh }) 
       {/* Строка поиска стран */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
         <Typography variant="h5" component="h2">
-          Страны ({filteredCountries.length}{countries.length > 20 ? ` из ${countries.length}` : ''})
+          Страны ({filteredCountries.length}{countries.length > filteredCountries.length ? ` из ${countries.length}` : ''})
         </Typography>
         
         <TextField

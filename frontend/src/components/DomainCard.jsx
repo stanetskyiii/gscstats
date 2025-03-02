@@ -1,15 +1,15 @@
 import React, { useEffect } from 'react';
-import { 
-  Card, 
-  CardContent, 
-  Typography, 
+import {
+  Card,
+  CardContent,
+  Typography,
   Box,
   Chip,
-  CircularProgress, 
+  CircularProgress,
   useTheme,
   Tooltip,
   IconButton,
-  Button
+  Button,
 } from '@mui/material';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import TrafficChart from './TrafficChart';
@@ -25,10 +25,63 @@ function DomainCard({ domain, historicalData, loading, metrics, onLoad }) {
     }
   }, [domain, loading, onLoad, historicalData]);
 
-  // Вычисляем последние значения метрик
-  const getLatestValue = (field) => {
-    if (!historicalData || historicalData.length === 0) return 0;
-    return historicalData[historicalData.length - 1][field] || 0;
+  // Получение значений с сравнением периодов
+  const getValueWithComparison = (field) => {
+    if (!historicalData || historicalData.length < 2) return { current: 0, previous: 0, change: 0, percent: 0, total: 0 };
+    
+    // Разделяем данные на два равных периода
+    const totalDays = historicalData.length;
+    let midPoint = Math.floor(totalDays / 2);
+    const startIndex = totalDays % 2 !== 0 ? 1 : 0; // Отбрасываем первый день если нечетное кол-во
+    
+    const firstPeriod = historicalData.slice(startIndex, startIndex + midPoint);
+    const secondPeriod = historicalData.slice(startIndex + midPoint);
+    
+    // Вычисляем суммы для каждого периода
+    let firstSum = 0;
+    let secondSum = 0;
+    let totalSum = 0;
+    
+    firstPeriod.forEach(item => {
+      firstSum += item[field] || 0;
+    });
+    
+    secondPeriod.forEach(item => {
+      secondSum += item[field] || 0;
+    });
+    
+    // Расчет общей суммы
+    historicalData.forEach(item => {
+      totalSum += item[field] || 0;
+    });
+    
+    // Для средней позиции и CTR используем среднее значение вместо суммы
+    if (field === 'avg_position' || field === 'ctr') {
+      firstSum = firstSum / firstPeriod.length;
+      secondSum = secondSum / secondPeriod.length;
+      totalSum = totalSum / historicalData.length;
+    }
+    
+    // Вычисляем изменение и процент
+    const change = secondSum - firstSum;
+    let percent = 0;
+    
+    if (firstSum !== 0) {
+      percent = (change / firstSum) * 100;
+    } else if (secondSum !== 0) {
+      percent = 100; // Если было 0, а стало ненулевое значение
+    }
+    
+    // Для средней позиции инвертируем смысл изменений (меньше - лучше)
+    const displayPercent = field === 'avg_position' ? -percent : percent;
+    
+    return {
+      current: secondSum,
+      previous: firstSum,
+      change: change,
+      percent: displayPercent,
+      total: totalSum
+    };
   };
 
   // Форматируем название домена для отображения
@@ -39,12 +92,8 @@ function DomainCard({ domain, historicalData, loading, metrics, onLoad }) {
       if (parts.length > 1) {
         return (
           <>
-            <span style={{ fontWeight: 'bold' }}>
-              {parts[0]}
-            </span>
-            <span>
-              .{parts.slice(1).join('.')}
-            </span>
+            <span style={{ fontWeight: 'bold' }}>{parts[0]}</span>
+            <span>.{parts.slice(1).join('.')}</span>
           </>
         );
       }
@@ -52,46 +101,28 @@ function DomainCard({ domain, historicalData, loading, metrics, onLoad }) {
     return domain;
   };
 
-  // Вычисляем изменение в процентах
-  const getChangePercent = (field) => {
-    if (!historicalData || historicalData.length < 2) return 0;
-    
-    const current = historicalData[historicalData.length - 1][field];
-    const previous = historicalData[historicalData.length - 2][field];
-    
-    if (previous === 0) return current > 0 ? 100 : 0;
-    
-    return ((current - previous) / previous) * 100;
-  };
-  
-  // Форматирование метки изменения
-  const getChangeLabel = (field) => {
-    const changePercent = getChangePercent(field);
-    const formattedChange = Math.abs(changePercent).toFixed(1);
-    
-    if (changePercent > 0) {
-      return `+${formattedChange}%`;
-    } else if (changePercent < 0) {
-      return `-${formattedChange}%`;
+  // Получение цвета для отображения изменения
+  const getChangeColor = (percent, isPosition = false) => {
+    // Для позиции логика обратная - уменьшение это хорошо
+    if (isPosition) {
+      if (percent > 0) {
+        return 'success';
+      } else if (percent < 0) {
+        return 'error';
+      }
     } else {
-      return '0%';
+      // Для остальных показателей - увеличение это хорошо
+      if (percent > 0) {
+        return 'success';
+      } else if (percent < 0) {
+        return 'error';
+      }
     }
-  };
-  
-  // Определение цвета изменения
-  const getChangeColor = (field) => {
-    const changePercent = getChangePercent(field);
-    
-    if (changePercent >= 5) {
-      return 'success';
-    } else if (changePercent <= -5) {
-      return 'error';
-    } else {
-      return 'default';
-    }
+
+    return 'default';
   };
 
-  // Формирование URL для Google Search Console
+// Формирование URL для Google Search Console
   const getGSCUrl = (domain) => {
     return `https://search.google.com/search-console?resource_id=https://${domain}/`;
   };
@@ -99,23 +130,30 @@ function DomainCard({ domain, historicalData, loading, metrics, onLoad }) {
   // Показываем skeleton loader при загрузке
   if (loading && (!historicalData || historicalData.length === 0)) {
     return (
-      <Card 
-        sx={{ 
-          height: '100%', 
-          display: 'flex', 
+      <Card
+        sx={{
+          height: '100%',
+          display: 'flex',
           flexDirection: 'column',
           backgroundColor: theme.palette.background.paper,
         }}
       >
         <CardContent sx={{ flexGrow: 1, padding: 2, pb: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 2,
+            }}
+          >
             <Typography variant="h6" component="div" sx={{ fontWeight: 500 }}>
               {formatDomain(domain)}
             </Typography>
             <Tooltip title={`Открыть ${domain} в Search Console`}>
-              <IconButton 
-                size="small" 
-                href={getGSCUrl(domain)} 
+              <IconButton
+                size="small"
+                href={getGSCUrl(domain)}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -123,17 +161,20 @@ function DomainCard({ domain, historicalData, loading, metrics, onLoad }) {
               </IconButton>
             </Tooltip>
           </Box>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              height: 200,
+            }}
+          >
             <CircularProgress />
           </Box>
-          
+
           <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-            <Button 
-              variant="outlined" 
-              size="small" 
-              onClick={() => onLoad && onLoad()}
-            >
+            <Button variant="outlined" size="small" onClick={() => onLoad && onLoad()}>
               Загрузить данные
             </Button>
           </Box>
@@ -145,23 +186,30 @@ function DomainCard({ domain, historicalData, loading, metrics, onLoad }) {
   // Показываем сообщение, если нет данных
   if (!historicalData || historicalData.length === 0) {
     return (
-      <Card 
-        sx={{ 
-          height: '100%', 
-          display: 'flex', 
+      <Card
+        sx={{
+          height: '100%',
+          display: 'flex',
           flexDirection: 'column',
           backgroundColor: theme.palette.background.paper,
         }}
       >
         <CardContent sx={{ flexGrow: 1, padding: 2, pb: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 2,
+            }}
+          >
             <Typography variant="h6" component="div" sx={{ fontWeight: 500 }}>
               {formatDomain(domain)}
             </Typography>
             <Tooltip title={`Открыть ${domain} в Search Console`}>
-              <IconButton 
-                size="small" 
-                href={getGSCUrl(domain)} 
+              <IconButton
+                size="small"
+                href={getGSCUrl(domain)}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -169,14 +217,22 @@ function DomainCard({ domain, historicalData, loading, metrics, onLoad }) {
               </IconButton>
             </Tooltip>
           </Box>
-          
-          <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              height: 200,
+            }}
+          >
             <Typography color="text.secondary" gutterBottom>
               Нет данных для отображения
             </Typography>
-            <Button 
-              variant="outlined" 
-              size="small" 
+            <Button
+              variant="outlined"
+              size="small"
               onClick={() => onLoad && onLoad()}
               sx={{ mt: 2 }}
             >
@@ -188,29 +244,42 @@ function DomainCard({ domain, historicalData, loading, metrics, onLoad }) {
     );
   }
 
+  // Получаем значения с сравнением для метрик
+  const clicksData = getValueWithComparison('traffic_clicks');
+  const impressionsData = getValueWithComparison('impressions');
+  const ctrData = getValueWithComparison('ctr');
+  const positionData = getValueWithComparison('avg_position');
+
   return (
-    <Card 
-      sx={{ 
-        height: '100%', 
-        display: 'flex', 
+    <Card
+      sx={{
+        height: '100%',
+        display: 'flex',
         flexDirection: 'column',
         backgroundColor: theme.palette.background.paper,
       }}
     >
       <CardContent sx={{ flexGrow: 1, padding: 2, pb: 2 }}>
         {/* Заголовок с названием домена и иконкой перехода */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6" component="div" sx={{ 
-            fontWeight: 500, 
-            display: 'flex', 
-            alignItems: 'center'
-          }}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 2,
+          }}
+        >
+          <Typography
+            variant="h6"
+            component="div"
+            sx={{ fontWeight: 500, display: 'flex', alignItems: 'center' }}
+          >
             {formatDomain(domain)}
           </Typography>
           <Tooltip title={`Открыть ${domain} в Search Console`}>
-            <IconButton 
-              size="small" 
-              href={getGSCUrl(domain)} 
+            <IconButton
+              size="small"
+              href={getGSCUrl(domain)}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -221,7 +290,14 @@ function DomainCard({ domain, historicalData, loading, metrics, onLoad }) {
 
         {/* Статистика */}
         <Box sx={{ mb: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 1,
+            }}
+          >
             <Typography variant="body2" color="text.secondary">
               Клики:
             </Typography>
@@ -230,19 +306,26 @@ function DomainCard({ domain, historicalData, loading, metrics, onLoad }) {
                 {loading ? (
                   <CircularProgress size={20} thickness={5} />
                 ) : (
-                  getLatestValue('traffic_clicks').toLocaleString()
+                  `${Math.round(clicksData.total).toLocaleString()} / ${Math.round(clicksData.current).toLocaleString()}`
                 )}
               </Typography>
-              <Chip 
-                size="small" 
-                label={getChangeLabel('traffic_clicks')} 
-                color={getChangeColor('traffic_clicks')} 
+              <Chip
+                size="small"
+                label={`${clicksData.percent > 0 ? '+' : ''}${clicksData.percent.toFixed(1)}%`}
+                color={getChangeColor(clicksData.percent)}
                 variant="outlined"
               />
             </Box>
           </Box>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 1,
+            }}
+          >
             <Typography variant="body2" color="text.secondary">
               Показы:
             </Typography>
@@ -251,19 +334,25 @@ function DomainCard({ domain, historicalData, loading, metrics, onLoad }) {
                 {loading ? (
                   <CircularProgress size={20} thickness={5} />
                 ) : (
-                  getLatestValue('impressions').toLocaleString()
+                  `${Math.round(impressionsData.total).toLocaleString()} / ${Math.round(impressionsData.current).toLocaleString()}`
                 )}
               </Typography>
-              <Chip 
-                size="small" 
-                label={getChangeLabel('impressions')} 
-                color={getChangeColor('impressions')} 
+              <Chip
+                size="small"
+                label={`${impressionsData.percent > 0 ? '+' : ''}${impressionsData.percent.toFixed(1)}%`}
+                color={getChangeColor(impressionsData.percent)}
                 variant="outlined"
               />
             </Box>
           </Box>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
             <Typography variant="body2" color="text.secondary">
               CTR:
             </Typography>
@@ -272,19 +361,25 @@ function DomainCard({ domain, historicalData, loading, metrics, onLoad }) {
                 {loading ? (
                   <CircularProgress size={20} thickness={5} />
                 ) : (
-                  `${(getLatestValue('ctr') * 100).toFixed(2)}%`
+                  `${(ctrData.total * 100).toFixed(2)}% / ${(ctrData.current * 100).toFixed(2)}%`
                 )}
               </Typography>
-              <Chip 
-                size="small" 
-                label={getChangeLabel('ctr')} 
-                color={getChangeColor('ctr')} 
+              <Chip
+                size="small"
+                label={`${ctrData.percent > 0 ? '+' : ''}${ctrData.percent.toFixed(1)}%`}
+                color={getChangeColor(ctrData.percent)}
                 variant="outlined"
               />
             </Box>
           </Box>
 
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
             <Typography variant="body2" color="text.secondary">
               Поз:
             </Typography>
@@ -293,14 +388,13 @@ function DomainCard({ domain, historicalData, loading, metrics, onLoad }) {
                 {loading ? (
                   <CircularProgress size={20} thickness={5} />
                 ) : (
-                  getLatestValue('avg_position').toFixed(1)
+                  `${positionData.total.toFixed(1)} / ${positionData.current.toFixed(1)}`
                 )}
               </Typography>
-              <Chip 
-                size="small" 
-                label={getChangeLabel('avg_position')} 
-                // Для позиции логика обратная - снижение это хорошо
-                color={getChangeColor('avg_position') === 'success' ? 'error' : (getChangeColor('avg_position') === 'error' ? 'success' : 'default')} 
+              <Chip
+                size="small"
+                label={`${positionData.percent > 0 ? '+' : ''}${positionData.percent.toFixed(1)}%`}
+                color={getChangeColor(positionData.percent, true)}
                 variant="outlined"
               />
             </Box>
@@ -310,7 +404,14 @@ function DomainCard({ domain, historicalData, loading, metrics, onLoad }) {
         {/* График с данными */}
         <Box sx={{ mt: 3, height: 200 }}>
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: '100%',
+              }}
+            >
               <CircularProgress />
             </Box>
           ) : (
