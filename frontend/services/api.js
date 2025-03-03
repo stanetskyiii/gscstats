@@ -287,9 +287,9 @@ export const getDomainSummaryRange = async (domain, startDate, endDate, progress
       const response = await api.get(`/domain_range_summary?domain_name=${domain}&start_date=${startDate}&end_date=${endDate}`);
       
       // Сортируем данные по дате
-      const sortedData = response.data ? 
+      const sortedData = Array.isArray(response.data) ? 
         response.data.sort((a, b) => new Date(a.date) - new Date(b.date)) : 
-        [];
+        (response.data ? [response.data] : []);
       
       if (progressMonitor) progressMonitor(100, 0); // Завершено
       return sortedData;
